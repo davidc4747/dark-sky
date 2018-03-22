@@ -9,6 +9,8 @@
 body {
     margin: 0;
     padding: 0;
+
+    background-color: #c8c8c8;
 }
 
 
@@ -16,5 +18,9 @@ body {
 
 
 /*====================*\
-    #TODO
+    #Canvas
 \*====================*/
+
+canvas {
+    position: absolute;
+}
