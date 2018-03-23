@@ -1,6 +1,5 @@
 
-// TODO: operate gun based on heat
-// TODO: HUD
+// TODO: HUD(totalTime, KillCount, GunHeat, FlashCharge)
 // TODO: canvas should fit viewport
 
 
@@ -22,6 +21,10 @@ lightMapCanvas.height = CANVAS_HEIGHT;
 let shadowCanvas = document.querySelector(".shadow-canvas");
 shadowCanvas.width = CANVAS_WIDTH;
 shadowCanvas.height = CANVAS_HEIGHT;
+
+let hudCanvas = document.createElement("canvas");
+hudCanvas.width = CANVAS_WIDTH;
+hudCanvas.height = CANVAS_HEIGHT;
 
 let mainContext = mainCanvas.getContext("2d");
 let lightMap = lightMapCanvas.getContext("2d");
@@ -452,11 +455,15 @@ function createBullet(canvas, playerPos, playerRotation) {// NOTE: pass canvas, 
 /*====================*\
     #Enemy Spawner
 \*====================*/
-
-// Create a new enemy every 3 seconds
-setInterval(function () {
+const BASE_SPAWN_TIME = 4300;
+setTimeout(spawnEnemy, BASE_SPAWN_TIME);
+function spawnEnemy() {
     enemies.push(createEnemy(mainCanvas, player.position));
-}, 3000);
+
+    // Spawn Next enemy
+    let nextSpawnTime = Math.max(BASE_SPAWN_TIME - (Math.pow(gameTime, 1.4)), 1500);
+    setTimeout(spawnEnemy, nextSpawnTime);
+}
 
 /*====================*\
     #Enemies!
@@ -469,7 +476,7 @@ function createEnemy(canvas, playerPos) {
     let health = MAX_HEALTH;
     let speed = 7;
 
-    let spawnDis = (1 * canvas.width * 0.5) + (canvas.width * 0.3);
+    let spawnDis = (1 * canvas.width * 0.45) + (canvas.width * 0.2);
     let spawnRotation = Math.random() * Math.PI * 2;
     let position = {
         x: playerPos.x + (spawnDis * Math.cos(spawnRotation)),
