@@ -1,6 +1,9 @@
 
+// TODO: Kill Enemies
+// TODO: FlashBang + Charging
+// TODO: Light Spawner
+// TODO: Light Dealth
 // TODO: canvas should fit viewport
-// This is gonna get reeeeaallly messy!!!
 
 
 /*====================*\
@@ -27,12 +30,20 @@ let lightMap = lightMapCanvas.getContext("2d");
 let shadowContext = shadowCanvas.getContext("2d");
 
 
-/* Enemy Vars */
-let enemies = [];
+
+
+/* Game Vars */
+let killCount = 0;
 
 /* Player Vars */
 let player = createPlayer(mainCanvas);
 let stopVal = 0;
+
+/* Enemy Vars */
+let enemies = [];
+
+/* Evironment Vars */
+let lights = [];
 
 
 
@@ -46,9 +57,6 @@ setInterval(function () {
     update();
     draw();
 }, 100);
-
-
-
 
 function draw() {
     // Clear canvaseses
@@ -121,7 +129,6 @@ function draw() {
     shadowContext.drawImage(lightMapCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
 }
 
-
 function update() {
 
     /*====================*\
@@ -131,11 +138,12 @@ function update() {
     let i = 0;
     while (i < enemies.length) {
         // Remove inactive enemies
-        if (enemies[i].health <= 0) {
+        if (enemies[i].getHealth() <= 0) {
+            killCount++;
             enemies.splice(i, 1);
-            i--;
         }
         else {
+            // console.log("alive?");
             enemies[i].update();
             i++;
         }
@@ -147,7 +155,7 @@ function update() {
     /*====================*\
         #Update Player
     \*====================*/
-    player.update();
+    player.update(enemies);
 }
 
 
@@ -156,6 +164,7 @@ function update() {
 /*====================*\
     #Mouse position
 \*====================*/
+
 let isMouseDown = false;
 let mousePosition = { x: 0, y: 0 };
 
@@ -192,6 +201,7 @@ function isKeyDown(key) {
 
 
 
+
 /*====================*\
     #Player
 \*====================*/
@@ -203,11 +213,11 @@ function createPlayer(canvas) {
     let health = 100;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
-    let speed = 7;
+    let speed = 12;
 
     let bullets = [];
 
-    let update = function () {
+    let update = function (enemies) {
         // Check for keyboard input
         if (isKeyDown("w")) {
             position.y -= speed;
@@ -243,12 +253,12 @@ function createPlayer(canvas) {
         let i = 0;
         while (i < bullets.length) {
             // Remove inactive bullets
-            if (bullets[i].isAlive === false) {
+            if (bullets[i].isAlive() === false) {
                 bullets.splice(i, 1);
-                i--;
+                // i--;
             }
             else {
-                bullets[i].update();
+                bullets[i].update(enemies);
                 i++;
             }
         }
@@ -269,7 +279,7 @@ function createPlayer(canvas) {
         ctx.restore();
 
         // Draw Player Light
-        let playerLight = shadowContext.createRadialGradient(position.x, position.y, 30, position.x, position.y, 50);
+        let playerLight = shadowContext.createRadialGradient(position.x, position.y, 30, position.x, position.y, 150);
         playerLight.addColorStop(0, "white");
         playerLight.addColorStop(1, "transparent");
         lightContext.fillStyle = playerLight;
@@ -289,15 +299,17 @@ function createPlayer(canvas) {
     #Bullet
 \*====================*/
 
-function createBullet(canvas, playerPos, playerRotation) {
+function createBullet(canvas, playerPos, playerRotation) {// NOTE: pass canvas, gameObj
     const MAX_BULLET_DIS = 300;
     const BULLET_HEIGHT = 35;
+    const HIT_RADIUS = 35;
+    const BULLET_DAMAGE = 11;
 
     let isAlive = true;
     let disTraveled = 0;
     let position = { x: playerPos.x, y: playerPos.y };
     let rotation = playerRotation - (Math.PI / 2) + (Math.random() * (Math.PI / 8)) - (Math.PI / 16);
-    let speed = 35;
+    let speed = 30;
 
     // Calc the direction the bullet is moving towards
     let lookVector = {
@@ -306,18 +318,31 @@ function createBullet(canvas, playerPos, playerRotation) {
     };
 
 
-    let update = function () {
+    let update = function (enemies) {
         if (!isAlive) return;
 
         // Move the bullet
-        position.x += lookVector.x * speed;
+        position.x += lookVector.x * speed;// NOTE: this isn't exactly right
         position.y += lookVector.y * speed;
 
-        // Check for collition with enemies
+        // Check for collision with enemies
+        enemies.forEach(function (enemy) {
+            let vectorToEnemy = {
+                x: enemy.position.x - position.x,
+                y: enemy.position.y - position.y
+            };
+            let enemyDis = Math.sqrt(Math.pow(vectorToEnemy.x, 2) + Math.pow(vectorToEnemy.y, 2));
+
+            // bullet is active, and hits an enemy
+            if (isAlive === true && enemyDis <= HIT_RADIUS) {
+                enemy.hurt(BULLET_DAMAGE);
+                isAlive = false;
+            }
+        });
 
         // Remove bullet after set distance
         disTraveled += speed;
-        isAlive = disTraveled <= MAX_BULLET_DIS;
+        isAlive = isAlive && disTraveled <= MAX_BULLET_DIS;
     };
 
     let draw = function (ctx, lightContext) {
@@ -328,6 +353,7 @@ function createBullet(canvas, playerPos, playerRotation) {
             x: position.x + lookVector.x * BULLET_HEIGHT,
             y: position.y + lookVector.y * BULLET_HEIGHT
         };
+
         ctx.strokeStyle = "yellow";
         ctx.lineWidth = 2;
         ctx.moveTo(position.x, position.y);
@@ -348,14 +374,16 @@ function createBullet(canvas, playerPos, playerRotation) {
         lightContext.scale(1.8, 0.7);
 
         lightContext.beginPath();
-        lightContext.arc(-BULLET_HEIGHT/2, 0, BULLET_HEIGHT, 0, 2 * Math.PI);
+        lightContext.arc(-BULLET_HEIGHT / 2, 0, BULLET_HEIGHT, 0, 2 * Math.PI);
         lightContext.fill();
 
         lightContext.restore();
     };
 
     return {
-        isAlive,
+        isAlive: function () {
+            return isAlive;
+        },
         position,
         update,
         draw
@@ -367,7 +395,7 @@ function createBullet(canvas, playerPos, playerRotation) {
 
 
 /*====================*\
-    #Spawner
+    #Enemy Spawner
 \*====================*/
 
 // Create a new enemy every 3 seconds
@@ -380,33 +408,58 @@ setInterval(function () {
 \*====================*/
 
 function createEnemy(canvas) {
-    let health = 50;
+    const MAX_HEALTH = 80;
+
+    let health = MAX_HEALTH;
     let position = {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
     };
     let speed = 5;
 
+    let hurt = function (value) {
+        health -= value;
+    };
+
     let update = function (player) {
-        // how do they move?
+        if (health <= 0) return;
+
         // Walk straight for the player
+        let lookVector = {
+            x: 0,
+            y: 0
+        };
+
+        position.x += lookVector.x * speed;
+        position.y += lookVector.y * speed;
     };
 
     let draw = function (ctx) {
-        if (health <= 0)
-            return;// TODO: remove enemy from memory
+        if (health <= 0) return;
 
-        ctx.fillStyle = "#FF0000";
-        ctx.lineWidth = 5;
+        // Draw the Shape
         ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = "red";
+        ctx.lineWidth = 4;
         ctx.arc(position.x, position.y, 10, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fill();
-    }
+
+        // Draw the healthBar        
+        ctx.beginPath();
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 5;
+        ctx.arc(position.x, position.y, 10, 0, (health / MAX_HEALTH) * (2 * Math.PI));
+        ctx.stroke();
+    };
 
     return {
-        health,
-        speed,
+        getHealth: function () {
+            return health;
+        },
+        position,
+        hurt,
         update,
         draw
     }
