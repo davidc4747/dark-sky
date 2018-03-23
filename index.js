@@ -1,7 +1,6 @@
 
-// TODO: HUD
-// TODO: Spawn enemies a random distance + angle away from the player
 // TODO: operate gun based on heat
+// TODO: HUD
 // TODO: canvas should fit viewport
 
 
@@ -440,23 +439,28 @@ function createBullet(canvas, playerPos, playerRotation) {// NOTE: pass canvas, 
 
 // Create a new enemy every 3 seconds
 setInterval(function () {
-    enemies.push(createEnemy(mainCanvas));
+    enemies.push(createEnemy(mainCanvas, player.position));
 }, 3000);
 
 /*====================*\
     #Enemies!
 \*====================*/
 
-function createEnemy(canvas) {
+function createEnemy(canvas, playerPos) {
     const MAX_HEALTH = 80;
     const HIT_RADIUS = 30;
 
     let health = MAX_HEALTH;
-    let position = {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-    };
     let speed = 6;
+
+    let spawnDis = (1 * canvas.width * 0.5) + (canvas.width * 0.3);
+    let spawnRotation = Math.random() * Math.PI * 2;
+    let position = {
+        x: playerPos.x + (spawnDis * Math.cos(spawnRotation)),
+        y: playerPos.y + (spawnDis * Math.sin(spawnRotation))
+    };
+
+
 
     let hurt = function (value) {
         health -= value;
