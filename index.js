@@ -65,7 +65,7 @@ function draw() {
     \*====================*/
 
     enemies.forEach(function (enemy) {
-        enemy.draw(mainContext);
+        enemy.draw(mainContext, lightMap);
     });
 
 
@@ -75,7 +75,7 @@ function draw() {
         #Draw Player
     \*====================*/
 
-    player.draw(mainContext);
+    player.draw(mainContext, lightMap);
 
 
 
@@ -88,13 +88,6 @@ function draw() {
 
     // Turn canvas into mask
     lightMap.globalCompositeOperation = "lighter";
-
-    // Create gradient
-    let playerLight = shadowContext.createRadialGradient(player.position.x, player.position.y, 50, player.position.x, player.position.y, 130);
-    playerLight.addColorStop(0, "white");
-    playerLight.addColorStop(1, "transparent");
-    lightMap.fillStyle = playerLight;
-    lightMap.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
     // Create gradient
     let light2 = shadowContext.createRadialGradient(150, 300, 30, 150, 300, 100);
@@ -124,8 +117,8 @@ function draw() {
 
     shadowContext.globalCompositeOperation = "xor";
     shadowContext.fillStyle = "#000";
-    // shadowContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-    // shadowContext.drawImage(lightMapCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+    shadowContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    shadowContext.drawImage(lightMapCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
 }
 
 
@@ -135,9 +128,18 @@ function update() {
         #Update Enemies
     \*====================*/
 
-    enemies.forEach(function (enemy) {
-        enemy.update(player);
-    });
+    let i = 0;
+    while (i < enemies.length) {
+        // Remove inactive enemies
+        if (enemies[i].health <= 0) {
+            enemies.splice(i, 1);
+            i--;
+        }
+        else {
+            enemies[i].update();
+            i++;
+        }
+    }
 
 
 
@@ -154,11 +156,20 @@ function update() {
 /*====================*\
     #Mouse position
 \*====================*/
+let isMouseDown = false;
 let mousePosition = { x: 0, y: 0 };
 
 document.addEventListener("mousemove", function (e) {
     mousePosition.x = e.clientX;
     mousePosition.y = e.clientY;
+});
+
+document.addEventListener("mousedown", function (e) {
+    isMouseDown = true;
+});
+
+document.addEventListener("mouseup", function (e) {
+    isMouseDown = false;
 });
 
 /*====================*\
@@ -194,6 +205,8 @@ function createPlayer(canvas) {
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 7;
 
+    let bullets = [];
+
     let update = function () {
         // Check for keyboard input
         if (isKeyDown("w")) {
@@ -210,27 +223,57 @@ function createPlayer(canvas) {
         }
 
 
-        // FOR TESTING!!!!
+        // Light Bomb
         if (isKeyDown(" ")) {
             stopVal = (stopVal + 0.1) % 1;
         }
 
-    };
+        if (isMouseDown) {
+            bullets.push(createBullet(canvas, position, rotation));
+        }
 
-    let draw = function (ctx) {
         // Rotate toward the mouse
         let lookVector = {
             x: mousePosition.x - position.x,
             y: mousePosition.y - position.y
         };
+        rotation = Math.atan2(lookVector.x, -lookVector.y);
 
+        // Update Bullets
+        let i = 0;
+        while (i < bullets.length) {
+            // Remove inactive bullets
+            if (bullets[i].isAlive === false) {
+                bullets.splice(i, 1);
+                i--;
+            }
+            else {
+                bullets[i].update();
+                i++;
+            }
+        }
 
+    };
+
+    let draw = function (ctx, lightContext) {
+        // Draw Bullets
+        bullets.forEach(function (bullet) {
+            bullet.draw(ctx, lightContext);
+        });
+
+        // Draw the player
         ctx.save();
-        ctx.translate(position.x , position.y);
-        ctx.rotate(Math.atan2(lookVector.x, -lookVector.y));
+        ctx.translate(position.x, position.y);
+        ctx.rotate(rotation);
         ctx.drawImage(playerImage, -25, -25, 50, 50);
         ctx.restore();
 
+        // Draw Player Light
+        let playerLight = shadowContext.createRadialGradient(position.x, position.y, 30, position.x, position.y, 50);
+        playerLight.addColorStop(0, "white");
+        playerLight.addColorStop(1, "transparent");
+        lightContext.fillStyle = playerLight;
+        lightContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
     };
 
 
@@ -241,6 +284,83 @@ function createPlayer(canvas) {
         draw
     };
 };
+
+/*====================*\
+    #Bullet
+\*====================*/
+
+function createBullet(canvas, playerPos, playerRotation) {
+    const MAX_BULLET_DIS = 300;
+    const BULLET_HEIGHT = 35;
+
+    let isAlive = true;
+    let disTraveled = 0;
+    let position = { x: playerPos.x, y: playerPos.y };
+    let rotation = playerRotation - (Math.PI / 2) + (Math.random() * (Math.PI / 8)) - (Math.PI / 16);
+    let speed = 35;
+
+    // Calc the direction the bullet is moving towards
+    let lookVector = {
+        x: Math.cos(rotation),
+        y: Math.sin(rotation)
+    };
+
+
+    let update = function () {
+        if (!isAlive) return;
+
+        // Move the bullet
+        position.x += lookVector.x * speed;
+        position.y += lookVector.y * speed;
+
+        // Check for collition with enemies
+
+        // Remove bullet after set distance
+        disTraveled += speed;
+        isAlive = disTraveled <= MAX_BULLET_DIS;
+    };
+
+    let draw = function (ctx, lightContext) {
+        if (!isAlive) return;
+
+        // Draw the bullet
+        let lineEnd = {
+            x: position.x + lookVector.x * BULLET_HEIGHT,
+            y: position.y + lookVector.y * BULLET_HEIGHT
+        };
+        ctx.strokeStyle = "yellow";
+        ctx.lineWidth = 2;
+        ctx.moveTo(position.x, position.y);
+        ctx.lineTo(lineEnd.x, lineEnd.y);
+        ctx.stroke();
+
+        // Draw the light around it
+        let glow = shadowContext.createRadialGradient(0, 0, 1, 0, 0, BULLET_HEIGHT);
+        glow.addColorStop(0, "rgba(255, 255, 255, 0.6)");
+        glow.addColorStop(1, "transparent");
+
+        lightContext.save();
+        lightContext.translate(lineEnd.x, lineEnd.y);
+        lightContext.rotate(rotation);
+
+        lightContext.lineWidth = 0;
+        lightContext.fillStyle = glow;
+        lightContext.scale(1.8, 0.7);
+
+        lightContext.beginPath();
+        lightContext.arc(-BULLET_HEIGHT/2, 0, BULLET_HEIGHT, 0, 2 * Math.PI);
+        lightContext.fill();
+
+        lightContext.restore();
+    };
+
+    return {
+        isAlive,
+        position,
+        update,
+        draw
+    };
+}
 
 
 
@@ -261,7 +381,7 @@ setInterval(function () {
 
 function createEnemy(canvas) {
     let health = 50;
-    let postion = {
+    let position = {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
     };
@@ -277,8 +397,9 @@ function createEnemy(canvas) {
             return;// TODO: remove enemy from memory
 
         ctx.fillStyle = "#FF0000";
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.arc(postion.x, postion.y, 10, 0, 2 * Math.PI);
+        ctx.arc(position.x, position.y, 10, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fill();
     }
