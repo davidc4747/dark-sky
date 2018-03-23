@@ -152,14 +152,30 @@ function draw() {
     hudContext.restore();
 
 
-    
+
     /*====================*\
         #Draw Game
     \*====================*/
 
     compositeContext.drawImage(mainCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
     compositeContext.drawImage(shadowCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
-    compositeContext.drawImage(hudCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+    if (player.getHealth() > 0) {
+        // Draw Player Hud
+        compositeContext.drawImage(hudCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+    }
+    else {
+        // Draw "Game Over" Screen
+        compositeContext.save();
+        compositeContext.fillStyle = "rgba(0, 0, 0, 0.7)";
+        compositeContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+        compositeContext.fillStyle = "red";
+        compositeContext.font = "bold 700% Arial";
+        compositeContext.textAlign = "center";
+        compositeContext.textBaseline = "center";
+        compositeContext.fillText("Game Over", mainCanvas.width / 2, mainCanvas.height / 2);
+        compositeContext.restore();
+    }
 }
 
 function update() {
@@ -259,7 +275,7 @@ function createPlayer(canvas) {
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
     /* Player Variables */
-    let health = MAX_PLAYER_HEALTH;
+    let health = 2;//MAX_PLAYER_HEALTH;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 12;
@@ -300,6 +316,9 @@ function createPlayer(canvas) {
     };
 
     let update = function (enemies) {
+        if(health < 0) return;
+
+
         // Check for keyboard input
         if (isKeyDown("w")) {
             position.y -= speed;
