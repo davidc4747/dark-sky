@@ -1,5 +1,5 @@
 
-// TODO: HUD(totalTime, KillCount, GunHeat, FlashCharge)
+// TODO: End the game
 // TODO: canvas should fit viewport
 
 
@@ -10,32 +10,51 @@
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 
-let mainCanvas = document.querySelector(".game-canvas");
+let compositeCanvas = document.createElement("canvas");
+compositeCanvas.classList.add("game-canvas");
+compositeCanvas.width = CANVAS_WIDTH;
+compositeCanvas.height = CANVAS_HEIGHT;
+
+let mainCanvas = document.createElement("canvas");
+mainCanvas.classList.add("game-canvas");
 mainCanvas.width = CANVAS_WIDTH;
 mainCanvas.height = CANVAS_HEIGHT;
 
 let lightMapCanvas = document.createElement("canvas");
+lightMapCanvas.classList.add("light-map-canvas");
 lightMapCanvas.width = CANVAS_WIDTH;
 lightMapCanvas.height = CANVAS_HEIGHT;
 
-let shadowCanvas = document.querySelector(".shadow-canvas");
+let shadowCanvas = document.createElement("canvas");
+shadowCanvas.classList.add("shadow-canvas");
 shadowCanvas.width = CANVAS_WIDTH;
 shadowCanvas.height = CANVAS_HEIGHT;
 
 let hudCanvas = document.createElement("canvas");
+hudCanvas.classList.add("hud-canvas");
 hudCanvas.width = CANVAS_WIDTH;
 hudCanvas.height = CANVAS_HEIGHT;
 
 let mainContext = mainCanvas.getContext("2d");
 let lightMap = lightMapCanvas.getContext("2d");
 let shadowContext = shadowCanvas.getContext("2d");
+let hudContext = hudCanvas.getContext("2d");
+let compositeContext = compositeCanvas.getContext("2d");
+document.body.appendChild(compositeCanvas);
+
+// Init HUD Context
+const HUB_MARGIN_PERC = 0.03;
+const MARGIN = {
+    x: mainCanvas.width * HUB_MARGIN_PERC,
+    y: mainCanvas.height * HUB_MARGIN_PERC
+};
 
 
 
 
 /* Game Vars */
 let killCount = 0;
-let gameTime = 0;
+let totalSeconds = 0;
 
 /* Player Vars */
 let player = createPlayer(mainCanvas);
@@ -59,7 +78,7 @@ let items = [];
     #Start Game Loop
 \*====================*/
 
-setInterval(function () { gameTime++; }, 1000);
+setInterval(function () { totalSeconds++; }, 1000);
 setInterval(function () {
     update();
     draw();
@@ -70,6 +89,8 @@ function draw() {
     mainContext.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
     lightMap.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
     shadowContext.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+    hudContext.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+    compositeContext.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
 
 
 
@@ -87,7 +108,7 @@ function draw() {
         #Draw Player
     \*====================*/
 
-    player.draw(mainContext, lightMap);
+    player.draw(mainContext, lightMap, hudContext);
 
 
 
@@ -110,6 +131,35 @@ function draw() {
     shadowContext.fillStyle = "#000";
     shadowContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
     shadowContext.drawImage(lightMapCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+
+
+
+    /*====================*\
+        #Draw Hub
+    \*====================*/
+
+    // set context defaults
+    hudContext.globalAlpha = 0.85;
+    hudContext.fillStyle = "white";
+    hudContext.font = "19px Arial";
+    hudContext.textBaseline = "top";
+
+    hudContext.save();
+    hudContext.textAlign = "left";
+    hudContext.fillText("Kill Count: " + killCount, mainCanvas.width * HUB_MARGIN_PERC, mainCanvas.height * HUB_MARGIN_PERC);
+    hudContext.textAlign = "right";
+    hudContext.fillText("Total Seconds: " + totalSeconds, mainCanvas.width - mainCanvas.width * HUB_MARGIN_PERC, mainCanvas.height * HUB_MARGIN_PERC);
+    hudContext.restore();
+
+
+    
+    /*====================*\
+        #Draw Game
+    \*====================*/
+
+    compositeContext.drawImage(mainCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+    compositeContext.drawImage(shadowCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
+    compositeContext.drawImage(hudCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
 }
 
 function update() {
@@ -203,26 +253,27 @@ function isKeyDown(key) {
 \*====================*/
 
 function createPlayer(canvas) {
+    const MAX_PLAYER_HEALTH = 100;
 
     let playerImage = new Image();
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
     /* Player Variables */
-    let health = 100;
+    let health = MAX_PLAYER_HEALTH;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 12;
 
     /* Gun Variables */
-    const MAX_GUN_HEAT = 500;
-    const GUN_COOL_RATE = 20;
+    const MAX_GUN_HEAT = 550;
+    const GUN_COOL_RATE = 23;
     const GUN_HEAT_RATE = 40;
-    const OVERHEAT_PENALTY = 500;
+    const OVERHEAT_PENALTY = 400;
     let bullets = [];
     let gunHeat = 0;
 
     /* Flash Bang Vars */
-    const MAX_FLASH_CHARGE = 3;
+    const MAX_FLASH_CHARGE = 4;
     let flashCharges = 1;
     let flashValue = 0;
     let flashPosition = { x: 0, y: 0 };
@@ -240,7 +291,7 @@ function createPlayer(canvas) {
             flashValue = 0;
         }
     });
-    setInterval(function() { if(flashCharges <= MAX_FLASH_CHARGE) flashCharges++; }, 4000);
+    setInterval(function () { if (flashCharges < MAX_FLASH_CHARGE) flashCharges++; }, 11000);
 
 
 
@@ -267,7 +318,7 @@ function createPlayer(canvas) {
         // Light Bomb
         if (isKeyDown(" ") && flashCharges > 0 && (flashAni.progress() === 1 || flashAni.progress() === 0)) {
             flashCharges--;
-            flashAni.progress(0.15).play();
+            flashAni.progress(0.20).play();
             flashPosition = {
                 x: position.x,
                 y: position.y
@@ -281,7 +332,7 @@ function createPlayer(canvas) {
             bullets.push(createBullet(canvas, position, rotation));
 
             // If hit the Heat Cap 
-            if(gunHeat > MAX_GUN_HEAT){
+            if (gunHeat > MAX_GUN_HEAT) {
                 // Force disable the gun
                 gunHeat += OVERHEAT_PENALTY;
             }
@@ -310,7 +361,7 @@ function createPlayer(canvas) {
 
     };
 
-    let draw = function (ctx, lightContext) {
+    let draw = function (ctx, lightContext, hudContext) {
         // Draw Bullets
         bullets.forEach(function (bullet) {
             bullet.draw(ctx, lightContext);
@@ -339,12 +390,76 @@ function createPlayer(canvas) {
         lightWave.addColorStop(1, "transparent");
         lightContext.fillStyle = lightWave;
         lightContext.fillRect(0, 0, canvas.width, canvas.height);
+
+
+
+
+        /*---------------------*\
+            #HUD Elements
+        \*---------------------*/
+
+        /* Player Health */
+        const HEALTH_BAR_HEIGHT = canvas.height * 0.024;
+        let healthPerc = health / MAX_PLAYER_HEALTH;
+
+        hudContext.save();
+        hudContext.fillStyle = "rgba(112, 112, 112, 0.5)";
+        hudContext.fillRect(0, canvas.height - HEALTH_BAR_HEIGHT, canvas.width, HEALTH_BAR_HEIGHT);
+        hudContext.restore();
+
+        hudContext.save();
+        hudContext.fillStyle = "green";
+        hudContext.textBaseline = "bottom";
+        hudContext.fillText(health, MARGIN.x, canvas.height - HEALTH_BAR_HEIGHT);
+        hudContext.fillRect(0, canvas.height - HEALTH_BAR_HEIGHT, canvas.width / 2 * healthPerc, HEALTH_BAR_HEIGHT);
+        hudContext.restore();
+
+        /* Gun Heat */
+        let heatPerc = gunHeat / MAX_GUN_HEAT;
+
+        hudContext.save();
+        var grd = hudContext.createLinearGradient(canvas.width / 2, 0, canvas.width, 0);
+        grd.addColorStop(0, "white");
+        grd.addColorStop(0.5, "orange");
+        grd.addColorStop(1, "red");
+
+        hudContext.fillStyle = grd;
+        hudContext.textAlign = "right";
+        hudContext.textBaseline = "bottom";
+        hudContext.fillText(gunHeat, canvas.width - MARGIN.x, canvas.height - HEALTH_BAR_HEIGHT);
+        hudContext.fillRect(canvas.width, canvas.height - HEALTH_BAR_HEIGHT, canvas.width / 2 * -heatPerc, HEALTH_BAR_HEIGHT);
+        hudContext.restore();
+
+        /* Flash Charges */
+        const BAR_MARGIN = 6;
+        let barWidth = canvas.width * 0.092;
+        let barHeight = canvas.height * 0.02;
+
+        hudContext.save();
+        for (let i = 0; i < MAX_FLASH_CHARGE; i++) {
+            let barx = (canvas.width * 0.94 - MARGIN.x) - (barWidth * i + BAR_MARGIN * i);
+            let bary = canvas.height - HEALTH_BAR_HEIGHT - barHeight / 2;
+
+            if (i < flashCharges) {
+                hudContext.fillStyle = "blue";
+                hudContext.fillRect(barx, bary, -barWidth, barHeight);
+            }
+            else {
+                hudContext.fillStyle = "grey";
+                hudContext.fillRect(barx, bary, -barWidth, barHeight);
+            }
+        }
+        hudContext.restore();
+
     };
 
 
     return {
         getHealth: function () {
             return health;
+        },
+        getHealthPerc: function () {
+            return health / MAX_PLAYER_HEALTH;
         },
         position,
         hurt,
@@ -358,10 +473,10 @@ function createPlayer(canvas) {
 \*====================*/
 
 function createBullet(canvas, playerPos, playerRotation) {// NOTE: pass canvas, gameObj
-    const MAX_BULLET_DIS = 300;
+    const MAX_BULLET_DIS = 350;
     const BULLET_HEIGHT = 35;
     const HIT_RADIUS = 35;
-    const BULLET_DAMAGE = 11;
+    const BULLET_DAMAGE = 14;
 
     let isAlive = true;
     let disTraveled = 0;
@@ -429,7 +544,7 @@ function createBullet(canvas, playerPos, playerRotation) {// NOTE: pass canvas, 
 
         lightContext.lineWidth = 0;
         lightContext.fillStyle = glow;
-        lightContext.scale(1.8, 0.7);
+        lightContext.scale(1.9, 0.8);
 
         lightContext.beginPath();
         lightContext.arc(-BULLET_HEIGHT / 2, 0, BULLET_HEIGHT, 0, 2 * Math.PI);
@@ -461,7 +576,7 @@ function spawnEnemy() {
     enemies.push(createEnemy(mainCanvas, player.position));
 
     // Spawn Next enemy
-    let nextSpawnTime = Math.max(BASE_SPAWN_TIME - (Math.pow(gameTime, 1.4)), 1500);
+    let nextSpawnTime = Math.max(BASE_SPAWN_TIME - (Math.pow(totalSeconds, 1.4)), 1200);
     setTimeout(spawnEnemy, nextSpawnTime);
 }
 
@@ -470,7 +585,7 @@ function spawnEnemy() {
 \*====================*/
 
 function createEnemy(canvas, playerPos) {
-    const MAX_HEALTH = 80;
+    const MAX_HEALTH = 70;
     const HIT_RADIUS = 30;
 
     let health = MAX_HEALTH;
