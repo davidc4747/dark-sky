@@ -200,20 +200,27 @@ function isKeyDown(key) {
 \*====================*/
 
 function createPlayer(canvas) {
-    const MAX_FLASH_CHARGE = 3;
 
     let playerImage = new Image();
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
-    let flashCharges = 1;
+    /* Player Variables */
     let health = 100;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 12;
 
+    /* Gun Variables */
+    const MAX_GUN_HEAT = 500;
+    const GUN_COOL_RATE = 20;
+    const GUN_HEAT_RATE = 40;
+    const OVERHEAT_PENALTY = 500;
     let bullets = [];
+    let gunHeat = 0;
 
-
+    /* Flash Bang Vars */
+    const MAX_FLASH_CHARGE = 3;
+    let flashCharges = 1;
     let flashValue = 0;
     let flashPosition = { x: 0, y: 0 };
     let flashAni = TweenLite.to({ flashValue }, 1.2, {
@@ -230,7 +237,7 @@ function createPlayer(canvas) {
             flashValue = 0;
         }
     });
-    setInterval(function() { if(flashCharges <= MAX_FLASH_CHARGE) flashCharges++; }, 3000);
+    setInterval(function() { if(flashCharges <= MAX_FLASH_CHARGE) flashCharges++; }, 4000);
 
 
 
@@ -264,8 +271,17 @@ function createPlayer(canvas) {
             };
         }
 
-        if (isMouseDown) {
+        // Manage Gun Heat
+        gunHeat = (gunHeat - GUN_COOL_RATE > 0) ? gunHeat - GUN_COOL_RATE : 0;
+        if (isMouseDown && gunHeat < MAX_GUN_HEAT) {
+            gunHeat = gunHeat + GUN_HEAT_RATE;
             bullets.push(createBullet(canvas, position, rotation));
+
+            // If hit the Heat Cap 
+            if(gunHeat > MAX_GUN_HEAT){
+                // Force disable the gun
+                gunHeat += OVERHEAT_PENALTY;
+            }
         }
 
         // Rotate toward the mouse
@@ -451,7 +467,7 @@ function createEnemy(canvas, playerPos) {
     const HIT_RADIUS = 30;
 
     let health = MAX_HEALTH;
-    let speed = 6;
+    let speed = 7;
 
     let spawnDis = (1 * canvas.width * 0.5) + (canvas.width * 0.3);
     let spawnRotation = Math.random() * Math.PI * 2;
