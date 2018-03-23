@@ -144,7 +144,7 @@ function update() {
         }
         else {
             // console.log("alive?");
-            enemies[i].update();
+            enemies[i].update(player);
             i++;
         }
     }
@@ -207,15 +207,23 @@ function isKeyDown(key) {
 \*====================*/
 
 function createPlayer(canvas) {
+    const MAX_FLASH_CHARGE = 3;
+
     let playerImage = new Image();
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
+    let flashCharges = 0;
     let health = 100;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 12;
 
     let bullets = [];
+
+    let hurt = function (value) {
+        health -= value;
+        console.log("Player is Hurt", health);
+    };
 
     let update = function (enemies) {
         // Check for keyboard input
@@ -288,8 +296,11 @@ function createPlayer(canvas) {
 
 
     return {
-        health,
+        getHealth: function () {
+            return health;
+        },
         position,
+        hurt,
         update,
         draw
     };
@@ -409,13 +420,14 @@ setInterval(function () {
 
 function createEnemy(canvas) {
     const MAX_HEALTH = 80;
+    const HIT_RADIUS = 30;
 
     let health = MAX_HEALTH;
     let position = {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
     };
-    let speed = 5;
+    let speed = 6;
 
     let hurt = function (value) {
         health -= value;
@@ -423,15 +435,26 @@ function createEnemy(canvas) {
 
     let update = function (player) {
         if (health <= 0) return;
+        let vectorToPlayer = {
+            x: player.position.x - position.x,
+            y: player.position.y - position.y
+        };
+        let playerDis = Math.sqrt(Math.pow(vectorToPlayer.x, 2) + Math.pow(vectorToPlayer.y, 2));
 
         // Walk straight for the player
         let lookVector = {
-            x: 0,
-            y: 0
+            x: vectorToPlayer.x / playerDis,
+            y: vectorToPlayer.y / playerDis
         };
 
         position.x += lookVector.x * speed;
         position.y += lookVector.y * speed;
+
+        // Check for collision with player
+        if (health > 0 && playerDis <= HIT_RADIUS) {
+            player.hurt(10);
+            health = -1;
+        }
     };
 
     let draw = function (ctx) {
