@@ -1,9 +1,9 @@
 
-// TODO: Kill Enemies
 // TODO: FlashBang + Charging
 // TODO: Light Spawner
 // TODO: Light Dealth
 // TODO: canvas should fit viewport
+// TODO: HUD
 
 
 /*====================*\
@@ -34,6 +34,7 @@ let shadowContext = shadowCanvas.getContext("2d");
 
 /* Game Vars */
 let killCount = 0;
+let gameTime = 0;
 
 /* Player Vars */
 let player = createPlayer(mainCanvas);
@@ -43,7 +44,10 @@ let stopVal = 0;
 let enemies = [];
 
 /* Evironment Vars */
-let lights = [];
+let lights = [
+    createRoamingLight(mainCanvas),
+    createRoamingLight(mainCanvas)
+];
 
 
 
@@ -53,6 +57,7 @@ let lights = [];
     #Start Game Loop
 \*====================*/
 
+setInterval(function () { gameTime++; }, 1000);
 setInterval(function () {
     update();
     draw();
@@ -79,6 +84,7 @@ function draw() {
 
 
 
+
     /*====================*\
         #Draw Player
     \*====================*/
@@ -97,19 +103,9 @@ function draw() {
     // Turn canvas into mask
     lightMap.globalCompositeOperation = "lighter";
 
-    // Create gradient
-    let light2 = shadowContext.createRadialGradient(150, 300, 30, 150, 300, 100);
-    light2.addColorStop(0, "white");
-    light2.addColorStop(1, "transparent");
-    lightMap.fillStyle = light2;
-    lightMap.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-
-    // Create gradient
-    let light3 = shadowContext.createRadialGradient(650, 300, 30, 650, 300, 100);
-    light3.addColorStop(0, "white");
-    light3.addColorStop(1, "transparent");
-    lightMap.fillStyle = light3;
-    lightMap.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    lights.forEach(function (light) {
+        light.draw(mainContext, lightMap);
+    });
 
     // Create Wave Gradient!!
     let lightWave = shadowContext.createRadialGradient(player.position.x, player.position.y, mainCanvas.width * stopVal / 2, player.position.x, player.position.y, mainCanvas.width * stopVal);
@@ -155,7 +151,20 @@ function update() {
     /*====================*\
         #Update Player
     \*====================*/
+
     player.update(enemies);
+
+
+
+
+    /*====================*\
+        #Update Evironment
+    \*====================*/
+
+    lights.forEach(function (light) {
+        light.update();
+    });
+
 }
 
 
@@ -222,7 +231,7 @@ function createPlayer(canvas) {
 
     let hurt = function (value) {
         health -= value;
-        console.log("Player is Hurt", health);
+        // console.log("Player is Hurt", health);
     };
 
     let update = function (enemies) {
@@ -287,7 +296,7 @@ function createPlayer(canvas) {
         ctx.restore();
 
         // Draw Player Light
-        let playerLight = shadowContext.createRadialGradient(position.x, position.y, 30, position.x, position.y, 150);
+        let playerLight = shadowContext.createRadialGradient(position.x, position.y, 30, position.x, position.y, 110);
         playerLight.addColorStop(0, "white");
         playerLight.addColorStop(1, "transparent");
         lightContext.fillStyle = playerLight;
@@ -487,3 +496,102 @@ function createEnemy(canvas) {
         draw
     }
 };
+
+
+
+
+
+/*====================*\
+    #Roaming Light
+\*====================*/
+
+function createRoamingLight(canvas) {
+    let position = { x: 0, y: 0 };
+    let radius = 0;
+
+    let breathAni;
+    setTimeout(function () { show(); }, Math.random() * 10000);
+
+
+    let hide = function () {
+        // Hide Light for 4 to 15 seconds
+        let hideTime = (Math.random() * 11000) + 4000;
+        setTimeout(function () { show(); }, hideTime);
+
+        // Opening animation in reverse, Play closing animation
+        let openAni = TweenLite.from({ radius }, 1, {
+            radius: 0,
+            ease: Power2.easeIn,
+            paused: true,
+
+            onUpdateParams: ["{self}"],
+            onUpdate: function (tween) {
+                radius = tween.target.radius
+            },
+
+            onComplete: function () {
+                // Stop the Breathing animation
+                breathAni.pause(0);
+            }
+        });
+        openAni.progress(1).reverse();
+    };
+
+    let show = function () {
+        // Randomly set position
+        position = { x: Math.random() * canvas.width, y: Math.random() * canvas.height };
+
+        // Show Light for 4 to 14 seconds
+        let showTime = (Math.random() * 11000) + 4000;
+        setTimeout(function () { hide(); }, showTime);
+
+        // Play Open animation
+        let openAni = TweenLite.to({ radius }, 0.8, {
+            radius: (1 * canvas.width * 0.14) + (canvas.width * 0.07),
+            ease: Power2.easeIn,
+            paused: true,
+
+            onUpdateParams: ["{self}"],
+            onUpdate: function (tween) {
+                radius = tween.target.radius
+            },
+
+            onComplete: function () {
+                // Play breathing animation
+                breathAni = TweenMax.to({ radius }, 1.5, {
+                    radius: "+=" + (canvas.width * 0.015),
+                    yoyo: true,
+                    repeat: -1,
+                    ease: Sine.easeInOut,
+
+                    onUpdateParams: ["{self}"],
+                    onUpdate: function (tween) {
+                        radius = tween.target.radius
+                    }
+                });
+            }
+        });
+        openAni.play();
+    };
+
+
+
+    let update = function () {
+        // NOTE: all logic is handled throught timeouts inside "show()" and "hide()"
+    };
+
+    let draw = function (ctx, lightContext) {
+        // Create gradient
+        let light = lightContext.createRadialGradient(position.x, position.y, radius * 0.15, position.x, position.y, radius);
+        light.addColorStop(0, "white");
+        light.addColorStop(1, "transparent");
+        lightContext.fillStyle = light;
+        lightContext.fillRect(0, 0, canvas.width, canvas.height);
+    };
+
+
+    return {
+        update,
+        draw
+    };
+}
