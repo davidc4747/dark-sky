@@ -1,9 +1,8 @@
 
-// TODO: FlashBang + Charging
-// TODO: Light Spawner
-// TODO: Light Dealth
-// TODO: canvas should fit viewport
 // TODO: HUD
+// TODO: Spawn enemies a random distance + angle away from the player
+// TODO: operate gun based on heat
+// TODO: canvas should fit viewport
 
 
 /*====================*\
@@ -38,7 +37,6 @@ let gameTime = 0;
 
 /* Player Vars */
 let player = createPlayer(mainCanvas);
-let stopVal = 0;
 
 /* Enemy Vars */
 let enemies = [];
@@ -48,6 +46,8 @@ let lights = [
     createRoamingLight(mainCanvas),
     createRoamingLight(mainCanvas)
 ];
+
+let items = [];
 
 
 
@@ -71,8 +71,6 @@ function draw() {
 
 
 
-
-
     /*====================*\
         #Draw Enemies
     \*====================*/
@@ -83,16 +81,11 @@ function draw() {
 
 
 
-
-
     /*====================*\
         #Draw Player
     \*====================*/
 
     player.draw(mainContext, lightMap);
-
-
-
 
 
 
@@ -106,14 +99,6 @@ function draw() {
     lights.forEach(function (light) {
         light.draw(mainContext, lightMap);
     });
-
-    // Create Wave Gradient!!
-    let lightWave = shadowContext.createRadialGradient(player.position.x, player.position.y, mainCanvas.width * stopVal / 2, player.position.x, player.position.y, mainCanvas.width * stopVal);
-    lightWave.addColorStop(0, "transparent");
-    lightWave.addColorStop(stopVal, "white");
-    lightWave.addColorStop(1, "transparent");
-    lightMap.fillStyle = lightWave;
-    lightMap.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
     /*====================*\
         #Create Shadows
@@ -221,7 +206,7 @@ function createPlayer(canvas) {
     let playerImage = new Image();
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
-    let flashCharges = 0;
+    let flashCharges = 1;
     let health = 100;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -229,9 +214,29 @@ function createPlayer(canvas) {
 
     let bullets = [];
 
+
+    let flashValue = 0;
+    let flashPosition = { x: 0, y: 0 };
+    let flashAni = TweenLite.to({ flashValue }, 1.2, {
+        flashValue: 1,
+        ease: Power2.easeIn,
+        paused: true,
+
+        onUpdateParams: ["{self}"],
+        onUpdate: function (tween) {
+            flashValue = tween.target.flashValue
+        },
+
+        onComplete: function () {
+            flashValue = 0;
+        }
+    });
+    setInterval(function() { if(flashCharges <= MAX_FLASH_CHARGE) flashCharges++; }, 3000);
+
+
+
     let hurt = function (value) {
         health -= value;
-        // console.log("Player is Hurt", health);
     };
 
     let update = function (enemies) {
@@ -251,8 +256,13 @@ function createPlayer(canvas) {
 
 
         // Light Bomb
-        if (isKeyDown(" ")) {
-            stopVal = (stopVal + 0.1) % 1;
+        if (isKeyDown(" ") && flashCharges > 0 && (flashAni.progress() === 1 || flashAni.progress() === 0)) {
+            flashCharges--;
+            flashAni.progress(0.15).play();
+            flashPosition = {
+                x: position.x,
+                y: position.y
+            };
         }
 
         if (isMouseDown) {
@@ -300,7 +310,17 @@ function createPlayer(canvas) {
         playerLight.addColorStop(0, "white");
         playerLight.addColorStop(1, "transparent");
         lightContext.fillStyle = playerLight;
-        lightContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        lightContext.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Create Wave Gradient!!
+        let lightWave = shadowContext.createRadialGradient(flashPosition.x, flashPosition.y, canvas.width * (flashValue / 1) * 0.25,
+            flashPosition.x, flashPosition.y, canvas.width * (flashValue / 1));
+        lightWave.addColorStop(0, "transparent");
+        lightWave.addColorStop(0.5, "white");
+        lightWave.addColorStop(0.8, "white");
+        lightWave.addColorStop(1, "transparent");
+        lightContext.fillStyle = lightWave;
+        lightContext.fillRect(0, 0, canvas.width, canvas.height);
     };
 
 
