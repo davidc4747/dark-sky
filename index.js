@@ -320,7 +320,7 @@ function createPlayer(canvas) {
     };
 
     let update = function (enemies) {
-        if(health < 0) return;
+        if (health < 0) return;
 
 
         // Check for keyboard input
