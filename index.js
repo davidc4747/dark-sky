@@ -1,8 +1,4 @@
 
-// TODO: End the game
-// TODO: canvas should fit viewport
-
-
 /*====================*\
     #Init Game
 \*====================*/
@@ -16,7 +12,7 @@ compositeCanvas.width = CANVAS_WIDTH;
 compositeCanvas.height = CANVAS_HEIGHT;
 
 let mainCanvas = document.createElement("canvas");
-mainCanvas.classList.add("game-canvas");
+mainCanvas.classList.add("main-canvas");
 mainCanvas.width = CANVAS_WIDTH;
 mainCanvas.height = CANVAS_HEIGHT;
 
@@ -157,6 +153,12 @@ function draw() {
         #Draw Game
     \*====================*/
 
+    // Background-color
+    compositeContext.save();
+    compositeContext.fillStyle = "#c8c8c8";
+    compositeContext.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    compositeContext.restore();
+
     compositeContext.drawImage(mainCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
     compositeContext.drawImage(shadowCanvas, 0, 0, mainCanvas.width, mainCanvas.height);
     if (player.getHealth() > 0) {
@@ -230,9 +232,11 @@ function update() {
 let isMouseDown = false;
 let mousePosition = { x: 0, y: 0 };
 
-document.addEventListener("mousemove", function (e) {
-    mousePosition.x = e.clientX;
-    mousePosition.y = e.clientY;
+compositeCanvas.addEventListener("mousemove", function (e) {
+    // mousePosition.x = e.clientX;
+    // mousePosition.y = e.clientY;
+    mousePosition.x = e.pageX - this.offsetLeft;
+    mousePosition.y = e.pageY - this.offsetTop;
 });
 
 document.addEventListener("mousedown", function (e) {
@@ -275,7 +279,7 @@ function createPlayer(canvas) {
     playerImage.src = "./imgs/space-ship-svgrepo-com.svg";
 
     /* Player Variables */
-    let health = 2;//MAX_PLAYER_HEALTH;
+    let health = MAX_PLAYER_HEALTH;
     let rotation = 0;
     let position = { x: canvas.width / 2, y: canvas.height / 2 };
     let speed = 12;

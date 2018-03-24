@@ -10,17 +10,12 @@ body {
     margin: 0;
     padding: 0;
 
-    background-color: #c8c8c8;
-}
+    background-color: #333;
+    
+    width: 100vw;
+    height: 100vh;
 
-
-
-
-
-/*====================*\
-    #Canvas
-\*====================*/
-
-canvas {
-    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
