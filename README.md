@@ -2,8 +2,6 @@
 
 Game about fighting in the dark :D
 
-## Demo
-
 ![Demo](demos/DarkSky-peck.gif)
 
 ## Development
