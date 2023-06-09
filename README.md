@@ -6,15 +6,11 @@ Game about fighting in the dark :D
 
 ![Demo](demos/DarkSky-peck.gif)
 
-## Developing
+## Development
 
-### Built With
-JavaScript & GreenSock
+**Tools**: JavaScript, GreenSock
 
-
-### Setting up Dev
-
-What a developer must do in order to start developing:
+Setup:
 
 ```shell
 git clone https://github.com/davidc4747/dark-sky
